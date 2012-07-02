@@ -56,8 +56,9 @@ static BOOL enabled = YES;
     if (![NSView MouseTerm_getEnabled])
         return YES;
 
-    // Don't handle if alt/option/control is pressed
-    if ([event modifierFlags] & (NSAlternateKeyMask | NSControlKeyMask))
+    // Don't handle if alt/option/control/shift is pressed
+    if ([event modifierFlags] &
+            (NSAlternateKeyMask | NSControlKeyMask | NSShiftKeyMask))
         return YES;
 
     TTLogicalScreen* screen = [(TTView*) self logicalScreen];
@@ -197,6 +198,24 @@ ignored:
     return NO;
 }
 
+- (NSEvent*) MouseTerm_stripShift: (NSEvent*) event
+{
+    if ([event modifierFlags] & NSShiftKeyMask) {
+        NSEvent* newEvent =
+            [NSEvent mouseEventWithType: [event type]
+                               location: [event locationInWindow]
+                          modifierFlags: [event modifierFlags] & ~NSShiftKeyMask
+                              timestamp: [event timestamp]
+                           windowNumber: [event windowNumber]
+                                context: [event context]
+                            eventNumber: [event eventNumber]
+                             clickCount: [event clickCount]
+                               pressure: [event pressure]];
+        return newEvent;
+    }
+    return NULL;
+}
+
 - (void) MouseTerm_mouseDown: (NSEvent*) event
 {
     MouseButton button;
@@ -205,7 +224,10 @@ ignored:
     else
         button = MOUSE_BUTTON1;
 
-    if (![self MouseTerm_buttonDown: event button: button])
+    NSEvent* newEvent = [self MouseTerm_stripShift: event];
+    if (newEvent != NULL)
+        [self MouseTerm_mouseDown: newEvent];
+    else if (![self MouseTerm_buttonDown: event button: button])
         [self MouseTerm_mouseDown: event];
 }
 
@@ -217,7 +239,10 @@ ignored:
     else
         button = MOUSE_BUTTON1;
 
-    if (![self MouseTerm_buttonDragged: event button: button])
+    NSEvent* newEvent = [self MouseTerm_stripShift: event];
+    if (newEvent != NULL)
+        [self MouseTerm_mouseDragged: newEvent];
+    else if (![self MouseTerm_buttonDragged: event button: button])
         [self MouseTerm_mouseDragged: event];
 }
 
@@ -229,7 +254,10 @@ ignored:
     else
         button = MOUSE_BUTTON1;
 
-    if (![self MouseTerm_buttonUp: event button: button])
+    NSEvent* newEvent = [self MouseTerm_stripShift: event];
+    if (newEvent != NULL)
+        [self MouseTerm_mouseUp: newEvent];
+    else if (![self MouseTerm_buttonUp: event button: button])
         [self MouseTerm_mouseUp: event];
 }
 
